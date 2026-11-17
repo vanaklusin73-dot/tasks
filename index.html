@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Трекер задач</title>
+<style>
+  :root {
+    --bg: #0b0d12;
+    --border: rgba(255, 255, 255, .08);
+    --border-strong: rgba(255, 255, 255, .16);
+    --text: #e9ecf4;
+    --muted: #8b93a7;
+    --accent: #6d5efc;
+    --accent-2: #a855f7;
+    --low: #38bdf8;
+    --med: #f5a524;
+    --high: #fb5a72;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    padding: 40px 16px 64px;
+    color: var(--text);
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    background:
+      radial-gradient(900px 520px at 10% -10%, rgba(109, 94, 252, .28), transparent 62%),
+      radial-gradient(820px 520px at 100% 0%, rgba(168, 85, 247, .18), transparent 58%),
+      radial-gradient(760px 620px at 50% 118%, rgba(56, 189, 248, .10), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app { max-width: 760px; margin: 0 auto; }
+
+  /* ---------- Шапка ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+
+  .brand-mark {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 10px 26px rgba(109, 94, 252, .45);
+  }
+
+  .brand-mark svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .today { color: var(--muted); font-size: 13px; font-weight: 500; }
+
+  /* ---------- Карточки ---------- */
+  .card {
+    background: linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .composer { padding: 16px; margin-bottom: 14px; }
+
+  .composer-row { display: flex; gap: 10px; }
+
+  #input {
+    flex: 1;
+    min-width: 0;
+    padding: 13px 15px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text);
+    background: rgba(8, 10, 16, .62);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    outline: none;
+    transition: border-color .18s ease, box-shadow .18s ease;
+  }
+
+  #input::placeholder { color: #5f6779; }
+
+  #input:focus {
+    border-color: rgba(109, 94, 252, .7);
+    box-shadow: 0 0 0 4px rgba(109, 94, 252, .16);
+  }
+
+  .btn-add {
+    flex: 0 0 auto;
+    padding: 13px 22px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    border: 0;
+    border-radius: 12px;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 10px 24px rgba(109, 94, 252, .38);
+    transition: transform .15s ease, box-shadow .18s ease, filter .18s ease;
+  }
+
+  .btn-add:hover { filter: brightness(1.08); box-shadow: 0 12px 28px rgba(109, 94, 252, .5); }
+  .btn-add:active { transform: translateY(1px) scale(.99); }
+
+  .composer-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 13px;
+  }
+
+  .picker {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(8, 10, 16, .55);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .picker button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background .16s ease, color .16s ease;
+  }
+
+  .picker button:hover { color: var(--text); background: rgba(255, 255, 255, .05); }
+
+  .picker .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .picker button[data-prio="low"] .dot { background: var(--low); }
+  .picker button[data-prio="medium"] .dot { background: var(--med); }
+  .picker button[data-prio="high"] .dot { background: var(--high); }
+
+  .picker button.is-active {
+    color: var(--text);
+    background: rgba(255, 255, 255, .09);
+    box-shadow: inset 0 0 0 1px var(--border-strong);
+  }
+
+  .hint { font-size: 12px; color: #5f6779; }
+
+  /* ---------- Прогресс ---------- */
+  .progress { padding: 15px 18px; margin-bottom: 14px; }
+
+  .progress-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .progress-head b { color: var(--text); font-weight: 600; }
+
+  .track {
+    height: 8px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, .07);
+    overflow: hidden;
+  }
+
+  .fill {
+    height: 100%;
+    width: 0;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    box-shadow: 0 0 16px rgba(124, 92, 255, .55);
+    transition: width .35s cubic-bezier(.4, 0, .2, 1);
+  }
+
+  /* ---------- Панель фильтров ---------- */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  .filters {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .filters button {
+    padding: 8px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    cursor: pointer;
+    transition: color .16s ease, background .16s ease;
+  }
+
+  .filters button:hover { color: var(--text); }
+
+  .filters button.is-active {
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 8px 20px rgba(109, 94, 252, .38);
+  }
+
+  .ghost {
+    padding: 9px 14px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    cursor: pointer;
+    transition: color .16s ease, border-color .16s ease, background .16s ease;
+  }
+
+  .ghost:hover:not(:disabled) {
+    color: var(--text);
+    border-color: var(--border-strong);
+    background: rgba(255, 255, 255, .05);
+  }
+
+  .ghost:disabled { opacity: .38; cursor: not-allowed; }
+
+  /* ---------- Список ---------- */
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .task {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 13px 14px 13px 16px;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .052), rgba(255, 255, 255, .02));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    transition: border-color .18s ease, transform .18s ease;
+  }
+
+  .task:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+
+  .task::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: transparent;
+    transition: background .18s ease;
+  }
+
+  .task[data-priority="high"]::before { background: var(--high); }
+  .task[data-priority="medium"]::before { background: var(--med); }
+  .task[data-priority="low"]::before { background: var(--low); }
+
+  .task.enter { animation: pop .28s ease both; }
+  .task.leaving { animation: vanish .17s ease forwards; }
+
+  .check {
+    flex: 0 0 auto;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, .03);
+    border: 1.5px solid rgba(255, 255, 255, .22);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background .18s ease, border-color .18s ease;
+  }
+
+  .check:hover { border-color: rgba(124, 92, 255, .85); }
+
+  .check svg {
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: #fff;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transform: scale(.6);
+    transition: opacity .18s ease, transform .18s ease;
+  }
+
+  .task.is-done .check {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+  }
+
+  .task.is-done .check svg { opacity: 1; transform: scale(1); }
+
+  .task-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .task-text {
+    font-size: 15px;
+    line-height: 1.45;
+    word-break: break-word;
+    transition: color .18s ease;
+  }
+
+  .task.is-done .task-text {
+    color: #6f778a;
+    text-decoration: line-through;
+    text-decoration-color: rgba(255, 255, 255, .3);
+  }
+
+  .tag {
+    padding: 3px 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    border-radius: 7px;
+  }
+
+  .tag-high { color: #ffb3c0; background: rgba(251, 90, 114, .14); border-color: rgba(251, 90, 114, .36); }
+  .tag-medium { color: #ffd79a; background: rgba(245, 165, 36, .14); border-color: rgba(245, 165, 36, .36); }
+  .tag-low { color: #a5e4ff; background: rgba(56, 189, 248, .13); border-color: rgba(56, 189, 248, .32); }
+
+  .task.is-done .tag { opacity: .45; }
+
+  .edit-input {
+    flex: 1;
+    width: 100%;
+    min-width: 0;
+    padding: 6px 9px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text);
+    background: rgba(8, 10, 16, .8);
+    border: 1px solid rgba(109, 94, 252, .75);
+    border-radius: 9px;
+    outline: none;
+  }
+
+  .del {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: #6b7386;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .18s ease, color .18s ease, background .18s ease, border-color .18s ease;
+  }
+
+  .del svg {
+    width: 15px;
+    height: 15px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+
+  .task:hover .del,
+  .task:focus-within .del { opacity: 1; }
+
+  .del:hover {
+    color: #ff8497;
+    background: rgba(251, 90, 114, .12);
+    border-color: rgba(251, 90, 114, .32);
+  }
+
+  .empty {
+    margin: 0;
+    padding: 34px 14px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+    border: 1px dashed var(--border);
+    border-radius: 14px;
+  }
+
+  .shake { animation: shake .3s ease; border-color: rgba(251, 90, 114, .8) !important; }
+
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(-6px) scale(.99); }
+    to { opacity: 1; transform: none; }
+  }
+
+  @keyframes vanish {
+    to { opacity: 0; transform: translateX(16px) scale(.97); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  @media (hover: none) {
+    .del { opacity: .7; }
+  }
+
+  @media (max-width: 560px) {
+    body { padding: 22px 12px 48px; }
+    .topbar { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .composer-row { flex-direction: column; }
+    .btn-add { width: 100%; }
+    .composer-foot { flex-direction: column; align-items: stretch; }
+    .picker { justify-content: space-between; }
+    .picker button { flex: 1; justify-content: center; }
+    .hint { text-align: center; }
+    .toolbar { flex-direction: column; align-items: stretch; }
+    .filters { justify-content: space-between; }
+    .filters button { flex: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></svg>
+      </span>
+      Трекер задач
+    </div>
+    <div class="today" id="today"></div>
+  </header>
+
+  <section class="card composer">
+    <form id="form" class="composer-row" autocomplete="off">
+      <input id="input" type="text" maxlength="200" placeholder="Что нужно сделать?"
+             aria-label="Текст новой задачи">
+      <button class="btn-add" type="submit">Добавить</button>
+    </form>
+
+    <div class="composer-foot">
+      <div class="picker" id="picker" role="group" aria-label="Приоритет новой задачи">
+        <button type="button" data-prio="low" aria-pressed="false"><span class="dot"></span>Низкий</button>
+        <button type="button" data-prio="medium" class="is-active" aria-pressed="true"><span class="dot"></span>Средний</button>
+        <button type="button" data-prio="high" aria-pressed="false"><span class="dot"></span>Высокий</button>
+      </div>
+      <span class="hint">Двойной клик по тексту — редактирование</span>
+    </div>
+  </section>
+
+  <section class="card progress">
+    <div class="progress-head">
+      <span id="progressText">Задач пока нет</span>
+      <b id="progressPct"></b>
+    </div>
+    <div class="track"><div class="fill" id="progressFill"></div></div>
+  </section>
+
+  <div class="toolbar">
+    <div class="filters" id="filters" role="group" aria-label="Фильтр задач">
+      <button type="button" data-filter="all" class="is-active">Все</button>
+      <button type="button" data-filter="active">Активные</button>
+      <button type="button" data-filter="done">Выполненные</button>
+    </div>
+    <button type="button" class="ghost" id="clearDone">Очистить выполненные</button>
+  </div>
+
+  <ul class="list" id="list"></ul>
+  <p class="empty" id="empty" hidden></p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var STORAGE_KEY = 'todo.tracker.v2';
+
+  var PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+  var PRIORITY_LABEL = { high: 'Высокий', medium: 'Средний', low: 'Низкий' };
+  var FILTERS = { all: true, active: true, done: true };
+
+  var state = {
+    tasks: [],
+    filter: 'all',
+    priority: 'medium'
+  };
+
+  var fresh = {};
+
+  var el = {
+    form: document.getElementById('form'),
+    input: document.getElementById('input'),
+    picker: document.getElementById('picker'),
+    list: document.getElementById('list'),
+    empty: document.getElementById('empty'),
+    filters: document.getElementById('filters'),
+    progressFill: document.getElementById('progressFill'),
+    progressText: document.getElementById('progressText'),
+    progressPct: document.getElementById('progressPct'),
+    clearDone: document.getElementById('clearDone'),
+    today: document.getElementById('today')
+  };
+
+  /* ---------- Утилиты ---------- */
+
+  function uid() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function findTask(id) {
+    for (var i = 0; i < state.tasks.length; i++) {
+      if (state.tasks[i].id === id) return state.tasks[i];
+    }
+    return null;
+  }
+
+  /* ---------- Хранилище ---------- */
+
+  function normalizeTask(raw) {
+    return {
+      id: typeof raw.id === 'string' && raw.id ? raw.id : uid(),
+      text: String(raw.text).slice(0, 200),
+      done: raw.done === true,
+      priority: PRIORITY_LABEL[raw.priority] ? raw.priority : 'medium',
+      createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : Date.now()
+    };
+  }
+
+  function isValidTask(raw) {
+    return !!raw && typeof raw === 'object' &&
+           typeof raw.text === 'string' && raw.text.trim() !== '';
+  }
+
+  function load() {
+    var raw = null;
+    try {
+      raw = window.localStorage.getItem(STORAGE_KEY);
+    } catch (err) {
+      return;
+    }
+    if (!raw) return;
+
+    var data;
+    try {
+      data = JSON.parse(raw);
+    } catch (err) {
+      return;
+    }
+    if (!data || !Array.isArray(data.tasks)) return;
+
+    state.tasks = data.tasks.filter(isValidTask).map(normalizeTask);
+
+    if (data.filter && FILTERS[data.filter]) {
+      state.filter = data.filter;
+    }
+  }
+
+  function persist() {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        tasks: state.tasks,
+        filter: state.filter
+      }));
+    } catch (err) {
+      console.warn('Не удалось сохранить задачи:', err);
+    }
+  }
+
+  /* ---------- Сортировка ---------- */
+
+  function sortedTasks() {
+    return state.tasks.slice().sort(function (a, b) {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      var pa = PRIORITY_ORDER[a.priority];
+      var pb = PRIORITY_ORDER[b.priority];
+      if (pa !== pb) return pa - pb;
+      return a.createdAt - b.createdAt;
+    });
+  }
+
+  function visibleTasks() {
+    return sortedTasks().filter(function (task) {
+      if (state.filter === 'active') return !task.done;
+      if (state.filter === 'done') return task.done;
+      return true;
+    });
+  }
+
+  /* ---------- Отрисовка ---------- */
+
+  function buildTask(task) {
+    var li = document.createElement('li');
+    li.className = 'task' + (task.done ? ' is-done' : '');
+    li.dataset.id = task.id;
+    li.dataset.priority = task.priority;
+    if (fresh[task.id]) {
+      li.classList.add('enter');
+      delete fresh[task.id];
+    }
+
+    var check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'check';
+    check.setAttribute('role', 'checkbox');
+    check.setAttribute('aria-checked', task.done ? 'true' : 'false');
+    check.setAttribute('aria-label', task.done ? 'Снять отметку о выполнении' : 'Отметить выполненной');
+    check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>';
+    check.addEventListener('click', function () {
+      toggleTask(task.id);
+    });
+
+    var body = document.createElement('div');
+    body.className = 'task-body';
+
+    var text = document.createElement('span');
+    text.className = 'task-text';
+    text.textContent = task.text;
+    text.title = 'Двойной клик — редактировать';
+    text.addEventListener('dblclick', function () {
+      startEdit(li, task);
+    });
+
+    var tag = document.createElement('span');
+    tag.className = 'tag tag-' + task.priority;
+    tag.textContent = PRIORITY_LABEL[task.priority];
+
+    body.appendChild(text);
+    body.appendChild(tag);
+
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'del';
+    del.setAttribute('aria-label', 'Удалить задачу');
+    del.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    del.addEventListener('click', function () {
+      removeTask(task.id, li);
+    });
+
+    li.appendChild(check);
+    li.appendChild(body);
+    li.appendChild(del);
+    return li;
+  }
+
+  function render() {
+    var tasks = visibleTasks();
+    var fragment = document.createDocumentFragment();
+
+    for (var i = 0; i < tasks.length; i++) {
+      fragment.appendChild(buildTask(tasks[i]));
+    }
+
+    el.list.textContent = '';
+    el.list.appendChild(fragment);
+
+    el.empty.hidden = tasks.length !== 0;
+    if (state.tasks.length === 0) {
+      el.empty.textContent = 'Список пуст — добавьте первую задачу.';
+    } else if (tasks.length === 0) {
+      el.empty.textContent = state.filter === 'active'
+        ? 'Все задачи выполнены 🎉'
+        : 'Выполненных задач пока нет.';
+    }
+
+    var total = state.tasks.length;
+    var done = 0;
+    for (var j = 0; j < state.tasks.length; j++) {
+      if (state.tasks[j].done) done++;
+    }
+    var pct = total ? Math.round(done / total * 100) : 0;
+
+    el.progressFill.style.width = pct + '%';
+    el.progressText.textContent = total
+      ? done + ' из ' + total + ' выполнено'
+      : 'Задач пока нет';
+    el.progressPct.textContent = total ? pct + '%' : '';
+    el.clearDone.disabled = done === 0;
+
+    var filterButtons = el.filters.querySelectorAll('button[data-filter]');
+    for (var k = 0; k < filterButtons.length; k++) {
+      var btn = filterButtons[k];
+      var isActive = btn.dataset.filter === state.filter;
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    }
+  }
+
+  /* ---------- Действия ---------- */
+
+  function addTask(text) {
+    var task = {
+      id: uid(),
+      text: text,
+      done: false,
+      priority: state.priority,
+      createdAt: Date.now()
+    };
+    state.tasks.push(task);
+    fresh[task.id] = true;
+    persist();
+    render();
+  }
+
+  function toggleTask(id) {
+    var task = findTask(id);
+    if (!task) return;
+    task.done = !task.done;
+    persist();
+    render();
+  }
+
+  function removeTask(id, node) {
+    if (node && node.dataset.removing === '1') return;
+    if (node) {
+      node.dataset.removing = '1';
+      node.classList.add('leaving');
+    }
+    window.setTimeout(function () {
+      state.tasks = state.tasks.filter(function (task) {
+        return task.id !== id;
+      });
+      persist();
+      render();
+    }, node ? 170 : 0);
+  }
+
+  function startEdit(node, task) {
+    if (node.classList.contains('is-editing')) return;
+    var textEl = node.querySelector('.task-text');
+    if (!textEl) return;
+
+    node.classList.add('is-editing');
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'edit-input';
+    input.maxLength = 200;
+    input.value = task.text;
+    textEl.replaceWith(input);
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+
+    var finished = false;
+
+    function finish(apply) {
+      if (finished) return;
+      finished = true;
+      var value = input.value.trim();
+      if (apply && value && value !== task.text) {
+        task.text = value;
+        persist();
+      }
+      render();
+    }
+
+    input.addEventListener('blur', function () {
+      finish(true);
+    });
+
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        finish(false);
+      }
+    });
+  }
+
+  function updatePicker() {
+    var buttons = el.picker.querySelectorAll('button[data-prio]');
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
+      var isActive = btn.dataset.prio === state.priority;
+      btn.classList.toggle('is-active', isActive);
+      btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    }
+  }
+
+  /* ---------- События ---------- */
+
+  el.form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var text = el.input.value.trim();
+    if (!text) {
+      el.input.classList.remove('shake');
+      void el.input.offsetWidth;
+      el.input.classList.add('shake');
+      el.input.focus();
+      return;
+    }
+    addTask(text);
+    el.input.value = '';
+    el.input.focus();
+  });
+
+  el.input.addEventListener('keydown', function (event) {
+    if (event.key === 'Escape') {
+      el.input.value = '';
+      el.input.blur();
+    }
+  });
+
+  el.input.addEventListener('animationend', function () {
+    el.input.classList.remove('shake');
+  });
+
+  el.picker.addEventListener('click', function (event) {
+    var btn = event.target.closest('button[data-prio]');
+    if (!btn) return;
+    state.priority = btn.dataset.prio;
+    updatePicker();
+  });
+
+  el.filters.addEventListener('click', function (event) {
+    var btn = event.target.closest('button[data-filter]');
+    if (!btn) return;
+    state.filter = btn.dataset.filter;
+    persist();
+    render();
+  });
+
+  el.clearDone.addEventListener('click', function () {
+    state.tasks = state.tasks.filter(function (task) {
+      return !task.done;
+    });
+    persist();
+    render();
+  });
+
+  window.addEventListener('storage', function (event) {
+    if (event.key !== STORAGE_KEY) return;
+    load();
+    render();
+  });
+
+  /* ---------- Старт ---------- */
+
+  try {
+    el.today.textContent = new Date().toLocaleDateString('ru-RU', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    });
+  } catch (err) {
+    el.today.textContent = '';
+  }
+
+  load();
+  updatePicker();
+  render();
+})();
+</script>
+</body>
+</html>
